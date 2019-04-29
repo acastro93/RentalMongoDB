@@ -53,6 +53,7 @@ namespace RentalMongoDB.Controllers
             var userList = dBContext.db.GetCollection<BsonDocument>("Users");
             var vehicleList = dBContext.db.GetCollection<BsonDocument>("Vehicles");
 
+
             var queryUser = Query.EQ("IdNumber", rental.IdNumber);
             var queryVehicle = Query.EQ("Plate", rental.Plate);
 
@@ -72,12 +73,19 @@ namespace RentalMongoDB.Controllers
                 {
                     if ((rental.IdNumber != 0) && (rental.Plate != 0) && (rental.RentalDays != 0))
                     {
-                        int costs = CalculateCosts(rental);
 
-                        ViewBag.Message = "El costo de renta es de " + costs.ToString();
-                        var result = userList.Insert(rental);
-                        changeState(rental);
-                        return View("Index");
+                        var query = Query<VehicleModel>.EQ(x => x.Plate, rental.Plate);
+                        var vehicleDetails = dBContext.db.GetCollection<VehicleModel>("Vehicles").FindOne(query);
+                        
+
+                        int costs = CalculateCosts(rental);
+                        rental.Cost = costs;
+                        
+                        changeState(vehicleDetails);
+
+                        var result = rentalList.Insert(rental);
+
+                        return RedirectToAction("Index");
                     }
                     else
                     {
@@ -117,18 +125,33 @@ namespace RentalMongoDB.Controllers
         }
 
         // GET: Rentals/Delete/5
-        public ActionResult Delete(int id)
+        public ActionResult Delete(string id)
         {
-            return View();
+            var rentalId = Query<RentalModel>.EQ(x => x.Id, new ObjectId(id));
+
+            var rentalDetails = dBContext.db.GetCollection<RentalModel>("Rentals").FindOne(rentalId);
+
+            return View(rentalDetails);
         }
 
         // POST: Rentals/Delete/5
         [HttpPost]
-        public ActionResult Delete(int id, FormCollection collection)
+        public ActionResult Delete(string id, RentalModel rental)
         {
             try
             {
-                // TODO: Add delete logic here
+                var rentalId = Query<RentalModel>.EQ(x => x.Id, new ObjectId(id));
+                var query = Query<VehicleModel>.EQ(x => x.Plate, rental.Plate);
+
+
+                var rentalList = dBContext.db.GetCollection<RentalModel>("Rentals");
+                var vehicleDetails = dBContext.db.GetCollection<VehicleModel>("Vehicles").FindOne(query);
+                
+                var deletion = rentalList.Remove(rentalId, RemoveFlags.Single);
+
+                changeState(vehicleDetails);
+
+
 
                 return RedirectToAction("Index");
             }
@@ -166,21 +189,21 @@ namespace RentalMongoDB.Controllers
             }
         }
 
-        public void changeState(RentalModel rental)
+        public void changeState(VehicleModel vehicle)
         {
-            var query = Query<VehicleModel>.EQ(x => x.Plate, rental.Plate);
+            var query = Query<VehicleModel>.EQ(x => x.Plate, vehicle.Plate);
             var vehicleList = dBContext.db.GetCollection<BsonDocument>("Vehicles");
             var vehicleDetails = dBContext.db.GetCollection<VehicleModel>("Vehicles").FindOne(query);
 
-            if (vehicleDetails.State.Equals("Rented"))
+            if (String.Equals(vehicle.State, "Rented"))
             {
-                vehicleDetails.State = "Available";
-                vehicleList.Update(query, Update.Replace(rental), UpdateFlags.None);
+                vehicle.State = "Available";
+                vehicleList.Update(query, Update.Replace(vehicle), UpdateFlags.None);
             }
             else
             {
-                vehicleDetails.State = "Rented";
-                vehicleList.Update(query, Update.Replace(rental), UpdateFlags.None);
+                vehicle.State = "Rented";
+                vehicleList.Update(query, Update.Replace(vehicle), UpdateFlags.None);
             }
 
 

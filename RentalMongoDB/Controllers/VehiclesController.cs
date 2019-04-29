@@ -25,11 +25,35 @@ namespace RentalMongoDB.Controllers
 
         // GET: Vehicles
         [HttpGet]
-        public ActionResult Index()
+        public ViewResult Index(string sortOrder, string searchString)
         {
+            ViewBag.PriceSortParm = String.IsNullOrEmpty(sortOrder) ? "HigherRentalPrice" : "";
             var vehicleList = dBContext.db.GetCollection<VehicleModel>("Vehicles").FindAll().ToList();
+            
+
+            if (!String.IsNullOrEmpty(searchString))
+            {
+               vehicleList.Where(vehicle => vehicle.Model.Contains(searchString) || vehicle.Brand.Contains(searchString));
+            }
+            switch (sortOrder)
+            {
+                case "HigherRentalPrice":
+                    vehicleList.OrderBy(vehicle => vehicle.RentalPrice); 
+                    break;
+                default:
+                    vehicleList.OrderByDescending(vehicle => vehicle.RentalPrice);
+                    break;
+            }
+
             return View(vehicleList);
         }
+
+
+        //public ActionResult Index()
+        //{
+        //    var vehicleList = dBContext.db.GetCollection<VehicleModel>("Vehicles").FindAll().ToList();
+        //    return View(vehicleList);
+        //}
 
         // GET: Vehicles/Details/5
         [HttpGet]
@@ -110,7 +134,11 @@ namespace RentalMongoDB.Controllers
                 var query = Query.EQ("Plate", vehicle.Plate);
                 var existsOne = vehicleList.FindAs<VehicleModel>(query).Count();
 
-                if (existsOne == 0)
+                var queryVehicle = Query<VehicleModel>.EQ(x => x.Plate, vehicle.Plate);
+                var vehicleDetails = dBContext.db.GetCollection<VehicleModel>("Vehicles").FindOne(query);
+
+
+                if ( (existsOne == 1) && (vehicleDetails.Plate == vehicle.Plate) )
                 {
                     var result = vehicleList.Update(vehicleId, Update.Replace(vehicle), UpdateFlags.None);
                     return RedirectToAction("Index");

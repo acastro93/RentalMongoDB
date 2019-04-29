@@ -6,6 +6,9 @@
 
 <h2>Index</h2>
 
+<p>Find by Model: @Html.TextBox("SearchString")  
+<input type="submit" value="Search" /></p>
+
 <table class="table">
     <tr>
         <th>
@@ -48,7 +51,7 @@
             @Html.DisplayName("Passenger Capacity")
         </th>
         <th>
-            @Html.DisplayName("Rental Price")
+            @Html.ActionLink("Rental Price", "Index", new { sortOrder = ViewBag.PriceSortParm })
         </th>
         <th>
             @Html.DisplayName("State")
